@@ -82,7 +82,7 @@ def plot_spectrum(syst, params, kx=None, ky=None, kz=None, ts_dir=None, L=None, 
 
     Args: 
         - syst: kwant Builder -- An infinite lattice system.
-        - params: dict -- (Other) parameters of the system.
+        - params: dict -- Parameters of the system.
         - kx, ky, kz: tuple(name, values) -- The k-component(s) vs. which the spectrum is plotted.
         - ts_dir: string -- Direction(s) in which the system possesses translational symmetry.
         - L: int -- Number of layers.
@@ -124,6 +124,15 @@ def plot_spectrum(syst, params, kx=None, ky=None, kz=None, ts_dir=None, L=None, 
 def plot_wfs(syst, params, kx=None, ky=None, kz=None, L=None):
     """
     Plot wavefunction density (corresponding to the two lowest eigenstates) on each site of a finite slab.
+
+    Args: 
+        - syst: kwant Builder -- An infinite lattice system.
+        - params: dict -- Parameters of the system.
+        - kx, ky, kz: tuple(name, values) -- The k-component(s) vs. which the spectrum is plotted.
+        - L: int -- Number of layers.
+    
+    Returns:
+        - fig: matplotlib figure -- Figure showing the two lowest eigenstates (ev0 and ev1).
     """
     if kx is None:
         ts_dir = 'yz'
