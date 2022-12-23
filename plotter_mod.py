@@ -30,15 +30,27 @@ from . import system, builder, _common
 from ._common import deprecate_args
 
 
-__all__ = ['plot', 'map', 'bands', 'spectrum', 'current', 'density',
-           'interpolate_current', 'interpolate_density',
-           'streamplot', 'scalarplot',
-           'sys_leads_sites', 'sys_leads_hoppings', 'sys_leads_pos',
-           'sys_leads_hopping_pos', 'mask_interpolate']
+__all__ = [
+    "plot",
+    "map",
+    "bands",
+    "spectrum",
+    "current",
+    "density",
+    "interpolate_current",
+    "interpolate_density",
+    "streamplot",
+    "scalarplot",
+    "sys_leads_sites",
+    "sys_leads_hoppings",
+    "sys_leads_pos",
+    "sys_leads_hopping_pos",
+    "mask_interpolate",
+]
 
 # All the expensive imports are done in _plotter.py. We lazy load the module
 # to avoid slowing down the initial import of Kwant.
-_p = _common.lazy_import('_plotter')
+_p = _common.lazy_import("_plotter")
 
 
 def _sample_array(array, n_samples, rng=None):
@@ -49,20 +61,22 @@ def _sample_array(array, n_samples, rng=None):
 
 # matplotlib helper functions.
 
+
 def _color_cycle():
     """Infinitely cycle through colors from the matplotlib color cycle."""
-    props = _p.matplotlib.rcParams['axes.prop_cycle']
-    return itertools.cycle(x['color'] for x in props)
+    props = _p.matplotlib.rcParams["axes.prop_cycle"]
+    return itertools.cycle(x["color"] for x in props)
 
 
 def _make_figure(dpi, fig_size, use_pyplot=False):
-    if 'matplotlib.backends' not in sys.modules:
+    if "matplotlib.backends" not in sys.modules:
         warnings.warn(
             "Kwant's plotting functions have\nthe side effect of "
             "selecting the matplotlib backend. To avoid this "
             "warning,\nimport matplotlib.pyplot, "
             "matplotlib.backends or call matplotlib.use().",
-            RuntimeWarning, stacklevel=3
+            RuntimeWarning,
+            stacklevel=3,
         )
     if use_pyplot:
         # We import backends and pyplot only at the last possible moment (=now)
@@ -70,9 +84,11 @@ def _make_figure(dpi, fig_size, use_pyplot=False):
         # for good.  Warn if backend has not been set yet.  This check is the
         # same as the one performed inside matplotlib.use.
         from matplotlib import pyplot
+
         fig = pyplot.figure()
     else:
         from matplotlib.backends.backend_agg import FigureCanvasAgg
+
         fig = _p.Figure()
         fig.canvas = FigureCanvasAgg(fig)
     if dpi is not None:
@@ -112,6 +128,7 @@ def _maybe_output_fig(fig, file=None, show=True):
         # If there was no file provided, pyplot should already be available and
         # we can import it safely without additional warnings.
         from matplotlib import pyplot
+
         pyplot.show()
 
 
@@ -132,7 +149,7 @@ def set_colors(color, collection, cmap, norm=None):
     length = max(len(collection.get_paths()), len(collection.get_offsets()))
 
     # matplotlib gets confused if dtype='object'
-    if (isinstance(color, np.ndarray) and color.dtype == np.dtype('object')):
+    if isinstance(color, np.ndarray) and color.dtype == np.dtype("object"):
         color = tuple(color)
 
     if _p.has3d and isinstance(collection, _p.mplot3d.art3d.Line3DCollection):
@@ -183,43 +200,45 @@ def percentile_bound(data, vmin, vmax, percentile=96, stretch=0.1):
     return (out_mn, out_mx)
 
 
-symbol_dict = {'O': 'o', 's': ('p', 4, 45), 'S': ('P', 4, 45)}
+symbol_dict = {"O": "o", "s": ("p", 4, 45), "S": ("P", 4, 45)}
+
 
 def get_symbol(symbols):
     """Return the path corresponding to the description in ``symbols``"""
     # Figure out if list of symbols or single symbol.
-    if not hasattr(symbols, '__getitem__'):
+    if not hasattr(symbols, "__getitem__"):
         symbols = [symbols]
-    elif len(symbols) == 3 and symbols[0] in ('p', 'P'):
+    elif len(symbols) == 3 and symbols[0] in ("p", "P"):
         # Most likely a polygon specification (at least not a valid other
         # symbol).
         symbols = [symbols]
 
-    symbols = [symbol_dict[symbol] if symbol in symbol_dict else symbol for
-               symbol in symbols]
+    symbols = [
+        symbol_dict[symbol] if symbol in symbol_dict else symbol for symbol in symbols
+    ]
 
     paths = []
     for symbol in symbols:
         if isinstance(symbol, _p.matplotlib.path.Path):
             return symbol
-        elif hasattr(symbol, '__getitem__') and len(symbol) == 3:
+        elif hasattr(symbol, "__getitem__") and len(symbol) == 3:
             kind, n, angle = symbol
 
-            if kind in ['p', 'P']:
-                if kind == 'p':
-                    radius = 1. / cos(pi / n)
+            if kind in ["p", "P"]:
+                if kind == "p":
+                    radius = 1.0 / cos(pi / n)
                 else:
                     # make the polygon such that it has area equal
                     # to a unit circle
                     radius = sqrt(2 * pi / (n * sin(2 * pi / n)))
 
                 angle = pi * angle / 180
-                patch = _p.matplotlib.patches.RegularPolygon((0, 0), n,
-                                                             radius=radius,
-                                                             orientation=angle)
+                patch = _p.matplotlib.patches.RegularPolygon(
+                    (0, 0), n, radius=radius, orientation=angle
+                )
             else:
                 raise ValueError("Unknown symbol definition " + str(symbol))
-        elif symbol == 'o':
+        elif symbol == "o":
             patch = _p.matplotlib.patches.Circle((0, 0), 1)
 
         paths.append(patch.get_path().transformed(patch.get_transform()))
@@ -227,9 +246,20 @@ def get_symbol(symbols):
     return paths
 
 
-def symbols(axes, pos, symbol='o', size=1, reflen=None, facecolor='k',
-            edgecolor='k', linewidth=None, cmap=None, norm=None, zorder=0,
-            **kwargs):
+def symbols(
+    axes,
+    pos,
+    symbol="o",
+    size=1,
+    reflen=None,
+    facecolor="k",
+    edgecolor="k",
+    linewidth=None,
+    cmap=None,
+    norm=None,
+    zorder=0,
+    **kwargs
+):
     """Add a collection of symbols (2D or 3D) to an axes instance.
 
     Parameters
@@ -274,25 +304,32 @@ def symbols(axes, pos, symbol='o', size=1, reflen=None, facecolor='k',
     dim = pos.shape[1]
     assert dim == 2 or dim == 3
 
-    #internally, size must be array_like
+    # internally, size must be array_like
     try:
         size[0]
     except TypeError:
-        size = (size, )
+        size = (size,)
 
     if dim == 2:
         Collection = _p.PathCollection
     else:
         Collection = _p.Path3DCollection
 
-    if len(pos) == 0 or np.all(symbol == 'no symbol') or np.all(size == 0):
+    if len(pos) == 0 or np.all(symbol == "no symbol") or np.all(size == 0):
         paths = []
         pos = np.empty((0, dim))
     else:
         paths = get_symbol(symbol)
 
-    coll = Collection(paths, sizes=size, reflen=reflen, linewidths=linewidth,
-                      offsets=pos, transOffset=axes.transData, zorder=zorder)
+    coll = Collection(
+        paths,
+        sizes=size,
+        reflen=reflen,
+        linewidths=linewidth,
+        offsets=pos,
+        transOffset=axes.transData,
+        zorder=zorder,
+    )
 
     set_colors(facecolor, coll, cmap, norm)
     coll.set_edgecolors(edgecolor)
@@ -307,8 +344,18 @@ def symbols(axes, pos, symbol='o', size=1, reflen=None, facecolor='k',
     return coll
 
 
-def lines(axes, pos0, pos1, reflen=None, colors='k', linestyles='solid',
-          cmap=None, norm=None, zorder=0, **kwargs):
+def lines(
+    axes,
+    pos0,
+    pos1,
+    reflen=None,
+    colors="k",
+    linestyles="solid",
+    cmap=None,
+    norm=None,
+    zorder=0,
+    **kwargs
+):
     """Add a collection of line segments (2D or 3D) to an axes instance.
 
     Parameters
@@ -350,7 +397,7 @@ def lines(axes, pos0, pos1, reflen=None, colors='k', linestyles='solid',
     """
 
     if not pos0.shape == pos1.shape:
-        raise ValueError('Incompatible lengths of coordinate arrays.')
+        raise ValueError("Incompatible lengths of coordinate arrays.")
 
     dim = pos0.shape[1]
     assert dim == 2 or dim == 3
@@ -359,10 +406,8 @@ def lines(axes, pos0, pos1, reflen=None, colors='k', linestyles='solid',
     else:
         Collection = _p.Line3DCollection
 
-    if (len(pos0) == 0 or
-        ('linewidths' in kwargs and kwargs['linewidths'] == 0)):
-        coll = Collection([], reflen=reflen, linestyles=linestyles,
-                          zorder=zorder)
+    if len(pos0) == 0 or ("linewidths" in kwargs and kwargs["linewidths"] == 0):
+        coll = Collection([], reflen=reflen, linestyles=linestyles, zorder=zorder)
         coll.update(kwargs)
         if dim == 2:
             axes.add_collection(coll)
@@ -372,8 +417,7 @@ def lines(axes, pos0, pos1, reflen=None, colors='k', linestyles='solid',
 
     segments = np.c_[pos0, pos1].reshape(pos0.shape[0], 2, dim)
 
-    coll = Collection(segments, reflen=reflen, linestyles=linestyles,
-                      zorder=zorder)
+    coll = Collection(segments, reflen=reflen, linestyles=linestyles, zorder=zorder)
     set_colors(colors, coll, cmap, norm)
     coll.update(kwargs)
 
@@ -386,6 +430,7 @@ def lines(axes, pos0, pos1, reflen=None, colors='k', linestyles='solid',
 
 
 # Extracting necessary data from the system.
+
 
 def sys_leads_sites(sys, num_lead_cells=2):
     """Return all the sites of the system and of the leads as a list.
@@ -422,24 +467,35 @@ def sys_leads_sites(sys, num_lead_cells=2):
         sites = [(site, None, 0) for site in syst.sites()]
         for leadnr, lead in enumerate(syst.leads):
             start = len(sites)
-            if hasattr(lead, 'builder') and len(lead.interface):
-                sites.extend(((site, leadnr, i) for site in
-                              lead.builder.sites() for i in
-                              range(num_lead_cells)))
+            if hasattr(lead, "builder") and len(lead.interface):
+                sites.extend(
+                    (
+                        (site, leadnr, i)
+                        for site in lead.builder.sites()
+                        for i in range(num_lead_cells)
+                    )
+                )
             lead_cells.append(slice(start, len(sites)))
     elif isinstance(syst, system.FiniteSystem):
         sites = [(i, None, 0) for i in range(syst.graph.num_nodes)]
         for leadnr, lead in enumerate(syst.leads):
             start = len(sites)
             # We will only plot leads with a graph and with a symmetry.
-            if (hasattr(lead, 'graph') and hasattr(lead, 'symmetry') and
-                len(syst.lead_interfaces[leadnr])):
-                sites.extend(((site, leadnr, i) for site in
-                              range(lead.cell_size) for i in
-                              range(num_lead_cells)))
+            if (
+                hasattr(lead, "graph")
+                and hasattr(lead, "symmetry")
+                and len(syst.lead_interfaces[leadnr])
+            ):
+                sites.extend(
+                    (
+                        (site, leadnr, i)
+                        for site in range(lead.cell_size)
+                        for i in range(num_lead_cells)
+                    )
+                )
             lead_cells.append(slice(start, len(sites)))
     else:
-        raise TypeError('Unrecognized system type.')
+        raise TypeError("Unrecognized system type.")
     return sites, lead_cells
 
 
@@ -476,13 +532,12 @@ def sys_leads_pos(sys, site_lead_nr):
     if is_builder:
         pos = np.array(ta.array([i[0].pos for i in site_lead_nr]))
     else:
-        syst_from_lead = lambda lead: (syst if (lead is None)
-                                      else syst.leads[lead])
-        pos = np.array(ta.array([syst_from_lead(i[1]).pos(i[0])
-                                 for i in site_lead_nr]))
+        syst_from_lead = lambda lead: (syst if (lead is None) else syst.leads[lead])
+        pos = np.array(ta.array([syst_from_lead(i[1]).pos(i[0]) for i in site_lead_nr]))
     if pos.dtype == object:  # Happens if not all the pos are same length.
-        raise ValueError("pos attribute of the sites does not have consistent"
-                         " values.")
+        raise ValueError(
+            "pos attribute of the sites does not have consistent" " values."
+        )
     dim = pos.shape[1]
 
     def get_vec_domain(lead_nr):
@@ -505,6 +560,7 @@ def sys_leads_pos(sys, site_lead_nr):
         # Conversion to numpy array here useful for efficiency
         vec = np.array(sym.periods)[0]
         return vec, dom
+
     vecs_doms = dict((i, get_vec_domain(i)) for i in range(len(syst.leads)))
     vecs_doms[None] = np.zeros((dim,)), 0
     for k, v in vecs_doms.items():
@@ -564,12 +620,17 @@ def sys_leads_hoppings(sys, num_lead_cells=2):
 
         for leadnr, lead in enumerate(syst.leads):
             start = len(hoppings)
-            if hasattr(lead, 'builder') and len(lead.interface):
-                hoppings.extend(((hop, leadnr, i) for hop in
-                                 lead_hoppings(lead.builder) for i in
-                                 range(num_lead_cells)))
+            if hasattr(lead, "builder") and len(lead.interface):
+                hoppings.extend(
+                    (
+                        (hop, leadnr, i)
+                        for hop in lead_hoppings(lead.builder)
+                        for i in range(num_lead_cells)
+                    )
+                )
             lead_cells.append(slice(start, len(hoppings)))
     elif isinstance(syst, system.System):
+
         def ll_hoppings(syst):
             for i in range(syst.graph.num_nodes):
                 for j in syst.graph.out_neighbors(i):
@@ -580,13 +641,21 @@ def sys_leads_hoppings(sys, num_lead_cells=2):
         for leadnr, lead in enumerate(syst.leads):
             start = len(hoppings)
             # We will only plot leads with a graph and with a symmetry.
-            if (hasattr(lead, 'graph') and hasattr(lead, 'symmetry') and
-                len(syst.lead_interfaces[leadnr])):
-                hoppings.extend(((hop, leadnr, i) for hop in ll_hoppings(lead)
-                                 for i in range(num_lead_cells)))
+            if (
+                hasattr(lead, "graph")
+                and hasattr(lead, "symmetry")
+                and len(syst.lead_interfaces[leadnr])
+            ):
+                hoppings.extend(
+                    (
+                        (hop, leadnr, i)
+                        for hop in ll_hoppings(lead)
+                        for i in range(num_lead_cells)
+                    )
+                )
             lead_cells.append(slice(start, len(hoppings)))
     else:
-        raise TypeError('Unrecognized system type.')
+        raise TypeError("Unrecognized system type.")
     return hoppings, lead_cells
 
 
@@ -620,19 +689,27 @@ def sys_leads_hopping_pos(sys, hop_lead_nr):
         return np.empty((0, 3)), np.empty((0, 3))
     num_lead_cells = hop_lead_nr[-1][2] + 1
     if is_builder:
-        pos = np.array(ta.array([ta.array(tuple(i[0][0].pos) +
-                                          tuple(i[0][1].pos)) for i in
-                                 hop_lead_nr]))
+        pos = np.array(
+            ta.array(
+                [ta.array(tuple(i[0][0].pos) + tuple(i[0][1].pos)) for i in hop_lead_nr]
+            )
+        )
     else:
-        syst_from_lead = lambda lead: (syst if (lead is None) else
-                                      syst.leads[lead])
-        pos = ta.array([ta.array(tuple(syst_from_lead(i[1]).pos(i[0][0])) +
-                                 tuple(syst_from_lead(i[1]).pos(i[0][1]))) for i
-                        in hop_lead_nr])
+        syst_from_lead = lambda lead: (syst if (lead is None) else syst.leads[lead])
+        pos = ta.array(
+            [
+                ta.array(
+                    tuple(syst_from_lead(i[1]).pos(i[0][0]))
+                    + tuple(syst_from_lead(i[1]).pos(i[0][1]))
+                )
+                for i in hop_lead_nr
+            ]
+        )
         pos = np.array(pos)
     if pos.dtype == object:  # Happens if not all the pos are same length.
-        raise ValueError("pos attribute of the sites does not have consistent"
-                         " values.")
+        raise ValueError(
+            "pos attribute of the sites does not have consistent" " values."
+        )
     dim = pos.shape[1]
 
     def get_vec_domain(lead_nr):
@@ -660,30 +737,49 @@ def sys_leads_hopping_pos(sys, hop_lead_nr):
     for k, v in vecs_doms.items():
         vecs_doms[k] = [v[0] * i for i in range(v[1], v[1] + num_lead_cells)]
     pos += [vecs_doms[i[1]][i[2]] for i in hop_lead_nr]
-    return np.copy(pos[:, : dim // 2]), np.copy(pos[:, dim // 2:])
+    return np.copy(pos[:, : dim // 2]), np.copy(pos[:, dim // 2 :])
 
 
 # Useful plot functions (to be extended).
 
-defaults = {'site_symbol': {2: 'o', 3: 'o'},
-            'site_size': {2: 0.25, 3: 0.5},
-            'site_color': {2: 'black', 3: 'white'},
-            'site_edgecolor': {2: 'black', 3: 'black'},
-            'site_lw': {2: 0, 3: 0.1},
-            'hop_color': {2: 'black', 3: 'black'},
-            'hop_lw': {2: 0.1, 3: 0},
-            'lead_color': {2: 'red', 3: 'red'}}
+defaults = {
+    "site_symbol": {2: "o", 3: "o"},
+    "site_size": {2: 0.25, 3: 0.5},
+    "site_color": {2: "black", 3: "white"},
+    "site_edgecolor": {2: "black", 3: "black"},
+    "site_lw": {2: 0, 3: 0.1},
+    "hop_color": {2: "black", 3: "black"},
+    "hop_lw": {2: 0.1, 3: 0},
+    "lead_color": {2: "red", 3: "red"},
+}
 
 
-def plot(sys, num_lead_cells=2, unit='nn',
-         site_symbol=None, site_size=None,
-         site_color=None, site_edgecolor=None, site_lw=None,
-         hop_color=None, hop_lw=None,
-         lead_site_symbol=None, lead_site_size=None, lead_color=None,
-         lead_site_edgecolor=None, lead_site_lw=None,
-         lead_hop_lw=None, pos_transform=None,
-         cmap='gray', colorbar=True, file=None,
-         show=True, dpi=None, fig_size=None, ax=None):
+def plot(
+    sys,
+    num_lead_cells=2,
+    unit="nn",
+    site_symbol=None,
+    site_size=None,
+    site_color=None,
+    site_edgecolor=None,
+    site_lw=None,
+    hop_color=None,
+    hop_lw=None,
+    lead_site_symbol=None,
+    lead_site_size=None,
+    lead_color=None,
+    lead_site_edgecolor=None,
+    lead_site_lw=None,
+    lead_hop_lw=None,
+    pos_transform=None,
+    cmap="gray",
+    colorbar=True,
+    file=None,
+    show=True,
+    dpi=None,
+    fig_size=None,
+    ax=None,
+):
     """Plot a system in 2 or 3 dimensions.
 
     An alias exists for this common name: ``kwant.plot``.
@@ -824,8 +920,7 @@ def plot(sys, num_lead_cells=2, unit='nn',
 
     """
     if not _p.mpl_available:
-        raise RuntimeError("matplotlib was not found, but is required "
-                           "for plot()")
+        raise RuntimeError("matplotlib was not found, but is required " "for plot()")
 
     syst = sys  # for naming consistency inside function bodies
     # Generate data.
@@ -840,8 +935,7 @@ def plot(sys, num_lead_cells=2, unit='nn',
     def resize_to_dim(array):
         if array.shape[1] != dim:
             ar = np.zeros((len(array), dim), dtype=float)
-            ar[:, : min(dim, array.shape[1])] = array[
-                :, : min(dim, array.shape[1])]
+            ar[:, : min(dim, array.shape[1])] = array[:, : min(dim, array.shape[1])]
             return ar
         else:
             return array
@@ -850,20 +944,22 @@ def plot(sys, num_lead_cells=2, unit='nn',
 
     def check_length(name):
         value = loc[name]
-        if name in ('site_size', 'site_lw') and isinstance(value, tuple):
-            raise TypeError('{0} may not be a tuple, use list or '
-                            'array instead.'.format(name))
+        if name in ("site_size", "site_lw") and isinstance(value, tuple):
+            raise TypeError(
+                "{0} may not be a tuple, use list or " "array instead.".format(name)
+            )
         if isinstance(value, (str, tuple)):
             return
         try:
             if len(value) != n_syst_sites:
-                raise ValueError('Length of {0} is not equal to number of '
-                                 'system sites.'.format(name))
+                raise ValueError(
+                    "Length of {0} is not equal to number of "
+                    "system sites.".format(name)
+                )
         except TypeError:
             pass
 
-    for name in ['site_symbol', 'site_size', 'site_color', 'site_edgecolor',
-                 'site_lw']:
+    for name in ["site_symbol", "site_size", "site_color", "site_edgecolor", "site_lw"]:
         check_length(name)
 
     # Apply transformations to the data
@@ -880,9 +976,9 @@ def plot(sys, num_lead_cells=2, unit='nn',
     start_pos = resize_to_dim(start_pos)
 
     # Determine the reference length.
-    if unit == 'pt':
+    if unit == "pt":
         reflen = None
-    elif unit == 'nn':
+    elif unit == "nn":
         if n_syst_hops:
             # If hoppings are present use their lengths to determine the
             # minimal one.
@@ -892,8 +988,9 @@ def plot(sys, num_lead_cells=2, unit='nn',
             # from ten randomly selected points to the remaining points in the
             # system.
             points = _sample_array(sites_pos, 10).T
-            distances = (sites_pos.reshape(1, -1, dim) -
-                         points.reshape(-1, 1, dim)).reshape(-1, dim)
+            distances = (
+                sites_pos.reshape(1, -1, dim) - points.reshape(-1, 1, dim)
+            ).reshape(-1, dim)
         distances = np.sort(np.sum(distances**2, axis=1))
         # Then check if distances are present that are way shorter than the
         # longest one. Then take first distance longer than these short
@@ -908,37 +1005,39 @@ def plot(sys, num_lead_cells=2, unit='nn',
         try:
             reflen = float(unit)
         except:
-            raise ValueError('Invalid value of unit argument.')
+            raise ValueError("Invalid value of unit argument.")
 
     # make all specs proper: either constant or lists/np.arrays:
     def make_proper_site_spec(spec, fancy_indexing=False):
         if callable(spec):
             spec = [spec(i[0]) for i in sites if i[1] is None]
-        if (fancy_indexing and _p.isarray(spec)
-            and not isinstance(spec, np.ndarray)):
+        if fancy_indexing and _p.isarray(spec) and not isinstance(spec, np.ndarray):
             try:
                 spec = np.asarray(spec)
             except:
-                spec = np.asarray(spec, dtype='object')
+                spec = np.asarray(spec, dtype="object")
         return spec
 
     def make_proper_hop_spec(spec, fancy_indexing=False):
         if callable(spec):
             spec = [spec(*i[0]) for i in hops if i[1] is None]
-        if (fancy_indexing and _p.isarray(spec)
-            and not isinstance(spec, np.ndarray)):
+        if fancy_indexing and _p.isarray(spec) and not isinstance(spec, np.ndarray):
             try:
                 spec = np.asarray(spec)
             except:
-                spec = np.asarray(spec, dtype='object')
+                spec = np.asarray(spec, dtype="object")
         return spec
 
     site_symbol = make_proper_site_spec(site_symbol)
-    if site_symbol is None: site_symbol = defaults['site_symbol'][dim]
+    if site_symbol is None:
+        site_symbol = defaults["site_symbol"][dim]
     # separate different symbols (not done in 3D, the separation
     # would mess up sorting)
-    if (_p.isarray(site_symbol) and dim != 3 and
-        (len(site_symbol) != 3 or site_symbol[0] not in ('p', 'P'))):
+    if (
+        _p.isarray(site_symbol)
+        and dim != 3
+        and (len(site_symbol) != 3 or site_symbol[0] not in ("p", "P"))
+    ):
         symbol_dict = defaultdict(list)
         for i, symbol in enumerate(site_symbol):
             symbol_dict[symbol].append(i)
@@ -956,16 +1055,20 @@ def plot(sys, num_lead_cells=2, unit='nn',
             # Skipping the leads for brevity.
             families = sorted({site.family for site in syst.sites})
             color_mapping = dict(zip(families, cycle))
+
             def site_color(site):
                 return color_mapping[syst.sites[site].family]
+
         elif isinstance(syst, builder.Builder):
             families = sorted({site[0].family for site in sites})
             color_mapping = dict(zip(families, cycle))
+
             def site_color(site):
                 return color_mapping[site.family]
+
         else:
             # Unknown finalized system, no sites access.
-            site_color = defaults['site_color'][dim]
+            site_color = defaults["site_color"][dim]
 
     site_size = make_proper_site_spec(site_size, fancy_indexing)
     site_color = make_proper_site_spec(site_color, fancy_indexing)
@@ -976,13 +1079,17 @@ def plot(sys, num_lead_cells=2, unit='nn',
     hop_lw = make_proper_hop_spec(hop_lw)
 
     # Choose defaults depending on dimension, if None was given
-    if site_size is None: site_size = defaults['site_size'][dim]
+    if site_size is None:
+        site_size = defaults["site_size"][dim]
     if site_edgecolor is None:
-        site_edgecolor = defaults['site_edgecolor'][dim]
-    if site_lw is None: site_lw = defaults['site_lw'][dim]
+        site_edgecolor = defaults["site_edgecolor"][dim]
+    if site_lw is None:
+        site_lw = defaults["site_lw"][dim]
 
-    if hop_color is None: hop_color = defaults['hop_color'][dim]
-    if hop_lw is None: hop_lw = defaults['hop_lw'][dim]
+    if hop_color is None:
+        hop_color = defaults["hop_color"][dim]
+    if hop_lw is None:
+        hop_lw = defaults["hop_lw"][dim]
 
     # if symbols are split up into different collections,
     # the colormapping will fail without normalization
@@ -991,31 +1098,35 @@ def plot(sys, num_lead_cells=2, unit='nn',
         try:
             if site_color.ndim == 1 and len(site_color) == n_syst_sites:
                 site_color = np.asarray(site_color, dtype=float)
-                norm = _p.matplotlib.colors.Normalize(site_color.min(),
-                                                      site_color.max())
+                norm = _p.matplotlib.colors.Normalize(
+                    site_color.min(), site_color.max()
+                )
         except:
             pass
 
     # take spec also for lead, if it's not a list/array, default, otherwise
     if lead_site_symbol is None:
-        lead_site_symbol = (site_symbol if not _p.isarray(site_symbol)
-                            else defaults['site_symbol'][dim])
+        lead_site_symbol = (
+            site_symbol if not _p.isarray(site_symbol) else defaults["site_symbol"][dim]
+        )
     if lead_site_size is None:
-        lead_site_size = (site_size if not _p.isarray(site_size)
-                          else defaults['site_size'][dim])
+        lead_site_size = (
+            site_size if not _p.isarray(site_size) else defaults["site_size"][dim]
+        )
     if lead_color is None:
-        lead_color = defaults['lead_color'][dim]
+        lead_color = defaults["lead_color"][dim]
     lead_color = _p.matplotlib.colors.colorConverter.to_rgba(lead_color)
 
     if lead_site_edgecolor is None:
-        lead_site_edgecolor = (site_edgecolor if not _p.isarray(site_edgecolor)
-                               else defaults['site_edgecolor'][dim])
+        lead_site_edgecolor = (
+            site_edgecolor
+            if not _p.isarray(site_edgecolor)
+            else defaults["site_edgecolor"][dim]
+        )
     if lead_site_lw is None:
-        lead_site_lw = (site_lw if not _p.isarray(site_lw)
-                        else defaults['site_lw'][dim])
+        lead_site_lw = site_lw if not _p.isarray(site_lw) else defaults["site_lw"][dim]
     if lead_hop_lw is None:
-        lead_hop_lw = (hop_lw if not _p.isarray(hop_lw)
-                       else defaults['hop_lw'][dim])
+        lead_hop_lw = hop_lw if not _p.isarray(hop_lw) else defaults["hop_lw"][dim]
 
     hop_cmap = None
     if not isinstance(cmap, str):
@@ -1028,12 +1139,12 @@ def plot(sys, num_lead_cells=2, unit='nn',
     if not ax:
         fig = _make_figure(dpi, fig_size, use_pyplot=(file is None))
         if dim == 2:
-            ax = fig.add_subplot(1, 1, 1, aspect='equal')
+            ax = fig.add_subplot(1, 1, 1, aspect="equal")
             ax.set_xmargin(0.05)
             ax.set_ymargin(0.05)
         else:
-            warnings.filterwarnings('ignore', message=r'.*rotation.*')
-            ax = fig.add_subplot(1, 1, 1, projection='3d')
+            warnings.filterwarnings("ignore", message=r".*rotation.*")
+            ax = fig.add_subplot(1, 1, 1, projection="3d")
             warnings.resetwarnings()
     else:
         fig = None
@@ -1042,18 +1153,27 @@ def plot(sys, num_lead_cells=2, unit='nn',
     for symbol, slc in symbol_slcs:
         size = site_size[slc] if _p.isarray(site_size) else site_size
         col = site_color[slc] if _p.isarray(site_color) else site_color
-        edgecol = (site_edgecolor[slc] if _p.isarray(site_edgecolor) else
-                   site_edgecolor)
+        edgecol = site_edgecolor[slc] if _p.isarray(site_edgecolor) else site_edgecolor
         lw = site_lw[slc] if _p.isarray(site_lw) else site_lw
 
-        symbol_coll = symbols(ax, sites_pos[slc], size=size,
-                              reflen=reflen, symbol=symbol,
-                              facecolor=col, edgecolor=edgecol,
-                              linewidth=lw, cmap=cmap, norm=norm, zorder=2)
+        symbol_coll = symbols(
+            ax,
+            sites_pos[slc],
+            size=size,
+            reflen=reflen,
+            symbol=symbol,
+            facecolor=col,
+            edgecolor=edgecol,
+            linewidth=lw,
+            cmap=cmap,
+            norm=norm,
+            zorder=2,
+        )
 
-    end, start = end_pos[: n_syst_hops], start_pos[: n_syst_hops]
-    line_coll = lines(ax, end, start, reflen, hop_color, linewidths=hop_lw,
-                      zorder=1, cmap=hop_cmap)
+    end, start = end_pos[:n_syst_hops], start_pos[:n_syst_hops]
+    line_coll = lines(
+        ax, end, start, reflen, hop_color, linewidths=hop_lw, zorder=1, cmap=hop_cmap
+    )
 
     # plot lead sites and hoppings
     norm = _p.matplotlib.colors.Normalize(-0.5, num_lead_cells - 0.5)
@@ -1061,16 +1181,24 @@ def plot(sys, num_lead_cells=2, unit='nn',
     lead_cmap = cmap_from_list(None, [lead_color, (1, 1, 1, lead_color[3])])
 
     for sites_slc, hops_slc in zip(lead_sites_slcs, lead_hops_slcs):
-        lead_site_colors = np.array([i[2] for i in sites[sites_slc]],
-                                    dtype=float)
+        lead_site_colors = np.array([i[2] for i in sites[sites_slc]], dtype=float)
 
         # Note: the previous version of the code had in addition this
         # line in the 3D case:
         # lead_site_colors = 1 / np.sqrt(1. + lead_site_colors)
-        symbols(ax, sites_pos[sites_slc], size=lead_site_size, reflen=reflen,
-                symbol=lead_site_symbol, facecolor=lead_site_colors,
-                edgecolor=lead_site_edgecolor, linewidth=lead_site_lw,
-                cmap=lead_cmap, zorder=2, norm=norm)
+        symbols(
+            ax,
+            sites_pos[sites_slc],
+            size=lead_site_size,
+            reflen=reflen,
+            symbol=lead_site_symbol,
+            facecolor=lead_site_colors,
+            edgecolor=lead_site_edgecolor,
+            linewidth=lead_site_lw,
+            cmap=lead_cmap,
+            zorder=2,
+            norm=norm,
+        )
 
         lead_hop_colors = np.array([i[2] for i in hops[hops_slc]], dtype=float)
 
@@ -1078,8 +1206,17 @@ def plot(sys, num_lead_cells=2, unit='nn',
         # line in the 3D case:
         # lead_hop_colors = 1 / np.sqrt(1. + lead_hop_colors)
         end, start = end_pos[hops_slc], start_pos[hops_slc]
-        lines(ax, end, start, reflen, lead_hop_colors, linewidths=lead_hop_lw,
-              cmap=lead_cmap, norm=norm, zorder=1)
+        lines(
+            ax,
+            end,
+            start,
+            reflen,
+            lead_hop_colors,
+            linewidths=lead_hop_lw,
+            cmap=lead_cmap,
+            norm=norm,
+            zorder=1,
+        )
 
     min_ = np.min(sites_pos, 0)
     max_ = np.max(sites_pos, 0)
@@ -1107,7 +1244,7 @@ def plot(sys, num_lead_cells=2, unit='nn',
     return fig
 
 
-def mask_interpolate(coords, values, a=None, method='nearest', oversampling=3):
+def mask_interpolate(coords, values, a=None, method="nearest", oversampling=3):
     """Interpolate a scalar function in vicinity of given points.
 
     Create a masked array corresponding to interpolated values of the function
@@ -1156,9 +1293,12 @@ def mask_interpolate(coords, values, a=None, method='nearest', oversampling=3):
     points = _sample_array(coords, 10)
     min_dist = np.min(tree.query(points, 2)[0][:, 1])
     if min_dist < 1e-6 * np.linalg.norm(cmax - cmin):
-        warnings.warn("Some sites have nearly coinciding positions, "
-                      "interpolation may be confusing.",
-                      RuntimeWarning, stacklevel=2)
+        warnings.warn(
+            "Some sites have nearly coinciding positions, "
+            "interpolation may be confusing.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     if a is None:
         a = min_dist
@@ -1167,15 +1307,15 @@ def mask_interpolate(coords, values, a=None, method='nearest', oversampling=3):
         raise ValueError("The reference distance a is too small.")
 
     if len(coords) != len(values):
-        raise ValueError("The number of sites doesn't match the number of "
-                         "provided values.")
+        raise ValueError(
+            "The number of sites doesn't match the number of " "provided values."
+        )
 
     shape = (((cmax - cmin) / a + 1) * oversampling).round()
     delta = 0.5 * (oversampling - 1) * a / oversampling
     cmin -= delta
     cmax += delta
-    dims = tuple(slice(cmin[i], cmax[i], 1j * shape[i]) for i in
-                 range(len(cmin)))
+    dims = tuple(slice(cmin[i], cmax[i], 1j * shape[i]) for i in range(len(cmin)))
     grid = tuple(np.ogrid[dims])
     img = interpolate.griddata(coords, values, grid, method)
     mask = np.mgrid[dims].reshape(len(cmin), -1).T
@@ -1189,10 +1329,25 @@ def mask_interpolate(coords, values, a=None, method='nearest', oversampling=3):
     return np.ma.masked_array(img, mask), cmin, cmax
 
 
-def map(sys, value, colorbar=True, cmap=None, vmin=None, vmax=None, a=None,
-        method='nearest', oversampling=3, num_lead_cells=0, file=None,
-        show=True, dpi=None, fig_size=None, ax=None, pos_transform=None,
-        background='#e0e0e0'):
+def map(
+    sys,
+    value,
+    colorbar=True,
+    cmap=None,
+    vmin=None,
+    vmax=None,
+    a=None,
+    method="nearest",
+    oversampling=3,
+    num_lead_cells=0,
+    file=None,
+    show=True,
+    dpi=None,
+    fig_size=None,
+    ax=None,
+    pos_transform=None,
+    background="#e0e0e0",
+):
     """Show interpolated map of a function defined for the sites of a system.
 
     Create a pixmap representation of a function of the sites of a system by
@@ -1266,8 +1421,7 @@ def map(sys, value, colorbar=True, cmap=None, vmin=None, vmax=None, a=None,
     """
 
     if not _p.mpl_available:
-        raise RuntimeError("matplotlib was not found, but is required "
-                           "for map()")
+        raise RuntimeError("matplotlib was not found, but is required " "for map()")
 
     syst = sys  # for naming consistency inside function bodies
     sites = sys_leads_sites(syst, 0)[0]
@@ -1277,14 +1431,15 @@ def map(sys, value, colorbar=True, cmap=None, vmin=None, vmax=None, a=None,
         coords = np.apply_along_axis(pos_transform, 1, coords)
 
     if coords.shape[1] != 2:
-        raise ValueError('Only 2D systems can be plotted this way.')
+        raise ValueError("Only 2D systems can be plotted this way.")
 
     if callable(value):
         value = [value(site[0]) for site in sites]
     else:
         if not isinstance(syst, system.FiniteSystem):
-            raise ValueError('List of values is only allowed as input '
-                             'for finalized systems.')
+            raise ValueError(
+                "List of values is only allowed as input " "for finalized systems."
+            )
     value = np.array(value)
     with _common.reraise_warnings():
         img, min, max = mask_interpolate(coords, value, a, method, oversampling)
@@ -1293,7 +1448,7 @@ def map(sys, value, colorbar=True, cmap=None, vmin=None, vmax=None, a=None,
     max += border
     if ax is None:
         fig = _make_figure(dpi, fig_size, use_pyplot=(file is None))
-        ax = fig.add_subplot(1, 1, 1, aspect='equal')
+        ax = fig.add_subplot(1, 1, 1, aspect="equal")
     else:
         fig = None
 
@@ -1309,39 +1464,59 @@ def map(sys, value, colorbar=True, cmap=None, vmin=None, vmax=None, a=None,
     underflow_pct = 100 * np.sum(unmasked_data < new_vmin) / len(unmasked_data)
     if (vmin is None and underflow_pct) or (vmax is None and overflow_pct):
         msg = (
-            'The plotted data contains ',
-            '{:.2f}% of values overflowing upper limit {:g} '
-                .format(overflow_pct, new_vmax)
-                if overflow_pct > 0 else '',
-            'and ' if overflow_pct > 0 and underflow_pct > 0 else '',
-            '{:.2f}% of values underflowing lower limit {:g} '
-                .format(underflow_pct, new_vmin)
-                if underflow_pct > 0 else '',
+            "The plotted data contains ",
+            "{:.2f}% of values overflowing upper limit {:g} ".format(
+                overflow_pct, new_vmax
+            )
+            if overflow_pct > 0
+            else "",
+            "and " if overflow_pct > 0 and underflow_pct > 0 else "",
+            "{:.2f}% of values underflowing lower limit {:g} ".format(
+                underflow_pct, new_vmin
+            )
+            if underflow_pct > 0
+            else "",
         )
-        warnings.warn(''.join(msg), RuntimeWarning, stacklevel=2)
+        warnings.warn("".join(msg), RuntimeWarning, stacklevel=2)
     vmin, vmax = new_vmin, new_vmax
 
     # Note that we tell imshow to show the array created by mask_interpolate
     # faithfully and not to interpolate by itself another time.
-    image = ax.imshow(img.T, extent=(min[0], max[0], min[1], max[1]),
-                      origin='lower', interpolation='none', cmap=cmap,
-                      vmin=vmin, vmax=vmax)
+    image = ax.imshow(
+        img.T,
+        extent=(min[0], max[0], min[1], max[1]),
+        origin="lower",
+        interpolation="none",
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+    )
     if num_lead_cells:
-        plot(syst, num_lead_cells, site_symbol='no symbol', hop_lw=0,
-             lead_site_symbol='s', lead_site_size=0.501, lead_site_lw=0,
-             lead_hop_lw=0, lead_color='black', colorbar=False, ax=ax)
+        plot(
+            syst,
+            num_lead_cells,
+            site_symbol="no symbol",
+            hop_lw=0,
+            lead_site_symbol="s",
+            lead_site_size=0.501,
+            lead_site_lw=0,
+            lead_hop_lw=0,
+            lead_color="black",
+            colorbar=False,
+            ax=ax,
+        )
 
     ax.patch.set_facecolor(background)
 
     if colorbar and fig is not None:
         # Make the colorbar ends pointy if we saturate the colormap
-        extend = 'neither'
+        extend = "neither"
         if underflow_pct > 0 and overflow_pct > 0:
-            extend = 'both'
+            extend = "both"
         elif underflow_pct > 0:
-            extend = 'min'
+            extend = "min"
         elif overflow_pct > 0:
-            extend = 'max'
+            extend = "max"
         fig.colorbar(image, extend=extend)
 
     _maybe_output_fig(fig, file=file, show=show)
@@ -1350,8 +1525,18 @@ def map(sys, value, colorbar=True, cmap=None, vmin=None, vmax=None, a=None,
 
 
 @deprecate_args
-def bands(sys, args=(), momenta=65, file=None, show=True, dpi=None,
-          fig_size=None, ax=None, *, params=None):
+def bands(
+    sys,
+    args=(),
+    momenta=65,
+    file=None,
+    show=True,
+    dpi=None,
+    fig_size=None,
+    ax=None,
+    *,
+    params=None
+):
     """Plot band structure of a translationally invariant 1D system.
 
     Parameters
@@ -1394,8 +1579,7 @@ def bands(sys, args=(), momenta=65, file=None, show=True, dpi=None,
     """
 
     if not _p.mpl_available:
-        raise RuntimeError("matplotlib was not found, but is required "
-                           "for bands()")
+        raise RuntimeError("matplotlib was not found, but is required " "for bands()")
 
     syst = sys  # for naming consistency inside function bodies
     _common.ensure_isinstance(syst, system.InfiniteSystem)
@@ -1408,24 +1592,36 @@ def bands(sys, args=(), momenta=65, file=None, show=True, dpi=None,
     # because 'spectrum' already does the diagonalisation.
     ham = syst.cell_hamiltonian(args, params=params)
     if not np.allclose(ham, ham.conjugate().transpose()):
-        raise ValueError('The cell Hamiltonian is not Hermitian.')
+        raise ValueError("The cell Hamiltonian is not Hermitian.")
     _hop = syst.inter_cell_hopping(args, params=params)
     hop = np.empty(ham.shape, dtype=complex)
-    hop[:, :_hop.shape[1]] = _hop
-    hop[:, _hop.shape[1]:] = 0
+    hop[:, : _hop.shape[1]] = _hop
+    hop[:, _hop.shape[1] :] = 0
 
     def h_k(k):
         # H_k = H_0 + V e^-ik + V^\dagger e^ik
         mat = hop * cmath.exp(-1j * k)
-        mat +=  mat.conjugate().transpose() + ham
+        mat += mat.conjugate().transpose() + ham
         return mat
 
-    return spectrum(h_k, ('k', momenta), file=file, show=show, dpi=dpi,
-                    fig_size=fig_size, ax=ax)
+    return spectrum(
+        h_k, ("k", momenta), file=file, show=show, dpi=dpi, fig_size=fig_size, ax=ax
+    )
 
 
-def spectrum(syst, x, y=None, params=None, mask=None, file=None,
-             show=True, dpi=None, fig_size=None, ax=None, num_bands=None):
+def spectrum(
+    syst,
+    x,
+    y=None,
+    params=None,
+    mask=None,
+    file=None,
+    show=True,
+    dpi=None,
+    fig_size=None,
+    ax=None,
+    num_bands=None,
+):
     """Plot the spectrum of a Hamiltonian as a function of 1 or 2 parameters
 
     Parameters
@@ -1472,19 +1668,21 @@ def spectrum(syst, x, y=None, params=None, mask=None, file=None,
     """
 
     if not _p.mpl_available:
-        raise RuntimeError("matplotlib was not found, but is required "
-                           "for plot_spectrum()")
+        raise RuntimeError(
+            "matplotlib was not found, but is required " "for plot_spectrum()"
+        )
     if y is not None and not _p.has3d:
         raise RuntimeError("Installed matplotlib does not support 3d plotting")
 
     if isinstance(syst, system.FiniteSystem):
+
         def ham(**kwargs):
             return syst.hamiltonian_submatrix(params=kwargs, sparse=False)
+
     elif callable(syst):
         ham = syst
     else:
-        raise TypeError("Expected 'syst' to be a finite Kwant system "
-                        "or a function.")
+        raise TypeError("Expected 'syst' to be a finite Kwant system " "or a function.")
 
     params = params or dict()
     keys = (x[0],) if y is None else (x[0], y[0])
@@ -1514,19 +1712,18 @@ def spectrum(syst, x, y=None, params=None, mask=None, file=None,
         if y is None:
             ax = fig.add_subplot(1, 1, 1)
         else:
-            warnings.filterwarnings('ignore',
-                                    message=r'.*mouse rotation disabled.*')
-            ax = fig.add_subplot(1, 1, 1, projection='3d')
+            warnings.filterwarnings("ignore", message=r".*mouse rotation disabled.*")
+            ax = fig.add_subplot(1, 1, 1, projection="3d")
             warnings.resetwarnings()
         ax.set_xlabel(keys[0])
         if y is None:
-            ax.set_ylabel('Energy')
+            ax.set_ylabel("Energy")
         else:
             ax.set_ylabel(keys[1])
-            ax.set_zlabel('Energy')
+            ax.set_zlabel("Energy")
         ax.set_title(
-            ', '.join(
-                '{} = {}'.format(key, value)
+            ", ".join(
+                "{} = {}".format(key, value)
                 for key, value in params.items()
                 if not callable(value)
             )
@@ -1538,9 +1735,11 @@ def spectrum(syst, x, y=None, params=None, mask=None, file=None,
     if y is None:
         ax.plot(array_values[0], spectrum)
     else:
-        if not hasattr(ax, 'plot_surface'):
-            msg = ("When providing an axis for plotting over a 2D domain the "
-                   "axis should be created with 'projection=\"3d\"")
+        if not hasattr(ax, "plot_surface"):
+            msg = (
+                "When providing an axis for plotting over a 2D domain the "
+                'axis should be created with \'projection="3d"'
+            )
             raise TypeError(msg)
         # plot_surface cannot directly handle rank-3 values, so we
         # explicitly loop over the last axis
@@ -1586,7 +1785,7 @@ def _smoothing(rho, z):
     rr = r * r
     rrrr = rr * rr
     mm = m * m
-    return m * (mm * (mm/5 - (2/3) * rr) + rrrr) + (8 / 15) * rrrr * r
+    return m * (mm * (mm / 5 - (2 / 3) * rr) + rrrr) + (8 / 15) * rrrr * r
 
 
 # We need to normalize the smoothing function so that it has unit cross
@@ -1641,13 +1840,12 @@ def density_kernel(coords):
 def current_kernel(coords, direction, length):
     z = np.dot(coords, direction)
     rho = np.sqrt(np.abs(np.sum(coords * coords) - z * z))
-    magn = (_smoothing(rho, z) - _smoothing(rho, z - length))
+    magn = _smoothing(rho, z) - _smoothing(rho, z - length)
     return direction * magn[..., None]
 
 
 # interpolate a discrete scalar or vector field.
-def _interpolate_field(dim, elements, discrete_field, bbox, width,
-                       padding, field_out):
+def _interpolate_field(dim, elements, discrete_field, bbox, width, padding, field_out):
 
     field_shape = np.array(field_out.shape)
     bbox_min, bbox_max = bbox
@@ -1672,12 +1870,12 @@ def _interpolate_field(dim, elements, discrete_field, bbox, width,
         pos_offsets = elements  # sites themselves
         kernel = density_kernel
 
-    region = [np.linspace(bbox_min[d] - padding,
-                          bbox_max[d] + padding,
-                          field_shape[d])
-              for d in range(dim)]
+    region = [
+        np.linspace(bbox_min[d] - padding, bbox_max[d] + padding, field_shape[d])
+        for d in range(dim)
+    ]
 
-    grid_density = (field_shape[:dim] - 1) / (bbox_max + 2*padding - bbox_min)
+    grid_density = (field_shape[:dim] - 1) / (bbox_max + 2 * padding - bbox_min)
 
     # slices for indexing 'field' and 'region' array
     slices = np.empty((len(discrete_field), dim, 2), int)
@@ -1687,7 +1885,7 @@ def _interpolate_field(dim, elements, discrete_field, bbox, width,
     else:
         mn = mx = elements
     slices[:, :, 0] = np.floor((mn - bbox_min) * grid_density)
-    slices[:, :, 1] = np.ceil((mx + 2*padding - bbox_min) * grid_density)
+    slices[:, :, 1] = np.ceil((mx + 2 * padding - bbox_min) * grid_density)
 
     for i in range(len(discrete_field)):
 
@@ -1699,8 +1897,9 @@ def _interpolate_field(dim, elements, discrete_field, bbox, width,
 
         # Coordinates of the grid points that are within range of the current
         # hopping.
-        coords = np.meshgrid(*[region[d][field_slice[d]] for d in range(dim)],
-                             sparse=True, indexing='ij')
+        coords = np.meshgrid(
+            *[region[d][field_slice[d]] for d in range(dim)], sparse=True, indexing="ij"
+        )
 
         # Convert "coords" into scaled distances from pos_offset
         coords -= pos_offsets[i]
@@ -1758,8 +1957,7 @@ def interpolate_current(syst, current, relwidth=None, abswidth=None, n=9):
         raise TypeError("The system needs to be finalized.")
 
     if len(current) != syst.graph.num_edges:
-        raise ValueError("Current and hoppings arrays do not have the same"
-                         " length.")
+        raise ValueError("Current and hoppings arrays do not have the same" " length.")
 
     # hops: hoppings (pairs of points)
     dim = len(syst.sites[0].pos)
@@ -1792,18 +1990,16 @@ def interpolate_current(syst, current, relwidth=None, abswidth=None, n=9):
     dirs /= lens[:, None]
     width = _optimal_width(lens, abswidth, relwidth, bbox_size)
 
-
     field, padding = _create_field(dim, bbox_size, width, n, is_current=True)
-    boundaries = tuple((bbox_min[d] - padding, bbox_max[d] + padding)
-                        for d in range(dim))
-    _interpolate_field(dim, hops, current,
-                       (bbox_min, bbox_max), width, padding, field)
+    boundaries = tuple(
+        (bbox_min[d] - padding, bbox_max[d] + padding) for d in range(dim)
+    )
+    _interpolate_field(dim, hops, current, (bbox_min, bbox_max), width, padding, field)
 
     return field, boundaries
 
 
-def interpolate_density(syst, density, relwidth=None, abswidth=None, n=9,
-                        mask=True):
+def interpolate_density(syst, density, relwidth=None, abswidth=None, n=9, mask=True):
     """Interpolate density in a system onto a regular grid.
 
     The system sites together with a scalar for each site defines a "discrete"
@@ -1851,8 +2047,7 @@ def interpolate_density(syst, density, relwidth=None, abswidth=None, n=9,
         raise TypeError("The system needs to be finalized.")
 
     if len(density) != len(syst.sites):
-        raise ValueError("Density and sites arrays do not have the same"
-                         " length.")
+        raise ValueError("Density and sites arrays do not have the same" " length.")
 
     dim = len(syst.sites[0].pos)
     sites = np.array([s.pos for s in syst.sites])
@@ -1862,24 +2057,25 @@ def interpolate_density(syst, density, relwidth=None, abswidth=None, n=9,
     bbox_size = bbox_max - bbox_min
 
     # Determine the optimal width for the bump function
-    dirs = np.array([syst.sites[i].pos - syst.sites[j].pos
-                     for i, j in syst.graph])
+    dirs = np.array([syst.sites[i].pos - syst.sites[j].pos for i, j in syst.graph])
     lens = np.sqrt(np.sum(dirs * dirs, -1))
     width = _optimal_width(lens, abswidth, relwidth, bbox_size)
 
     field, padding = _create_field(dim, bbox_size, width, n, is_current=False)
-    boundaries = tuple((bbox_min[d] - padding, bbox_max[d] + padding)
-                        for d in range(dim))
-    _interpolate_field(dim, sites, density,
-                       (bbox_min, bbox_max), width, padding, field)
+    boundaries = tuple(
+        (bbox_min[d] - padding, bbox_max[d] + padding) for d in range(dim)
+    )
+    _interpolate_field(dim, sites, density, (bbox_min, bbox_max), width, padding, field)
 
     if mask:
         # Field is zero when we are > 0.5*width from any site (as bump has
         # finite support), so we mask positions a little further than this.
-        field = _mask(field,
-                      box=boundaries,
-                      coords=np.array([s.pos for s in syst.sites]),
-                      cutoff=0.6*width)
+        field = _mask(
+            field,
+            box=boundaries,
+            coords=np.array([s.pos for s in syst.sites]),
+            cutoff=0.6 * width,
+        )
 
     return field, boundaries
 
@@ -1892,6 +2088,7 @@ def _gamma_compress(linear):
         a = 0.055
         return (1 + a) * linear ** (1 / 2.4) - a
 
+
 _gamma_compress = np.vectorize(_gamma_compress, otypes=[float])
 
 
@@ -1901,7 +2098,8 @@ def _gamma_expand(corrected):
         return corrected / 12.92
     else:
         a = 0.055
-        return ((corrected + a) / (1 + a))**2.4
+        return ((corrected + a) / (1 + a)) ** 2.4
+
 
 _gamma_expand = np.vectorize(_gamma_expand, otypes=[float])
 
@@ -1913,18 +2111,29 @@ def _linear_cmap(a, b):
     a_linear = _gamma_expand(a)
     b_linear = _gamma_expand(b)
     color_diff = a_linear - b_linear
-    palette = (np.linspace(0, 1, 256).reshape((-1, 1))
-               * color_diff.reshape((1, -1)))
+    palette = np.linspace(0, 1, 256).reshape((-1, 1)) * color_diff.reshape((1, -1))
     palette += b_linear
     palette = _gamma_compress(palette)
     return _p.matplotlib.colors.ListedColormap(palette)
 
 
-def streamplot(field, box, cmap=None, bgcolor=None, linecolor='k',
-               max_linewidth=3, min_linewidth=1, density=2/9,
-               colorbar=True, file=None,
-               show=True, dpi=None, fig_size=None, ax=None,
-               vmax=None):
+def streamplot(
+    field,
+    box,
+    cmap=None,
+    bgcolor=None,
+    linecolor="k",
+    max_linewidth=3,
+    min_linewidth=1,
+    density=2 / 9,
+    colorbar=True,
+    file=None,
+    show=True,
+    dpi=None,
+    fig_size=None,
+    ax=None,
+    vmax=None,
+):
     """Draw streamlines of a flow field in Kwant style
 
     Solid colored streamlines are drawn, superimposed on a color plot of
@@ -1987,8 +2196,7 @@ def streamplot(field, box, cmap=None, bgcolor=None, linecolor='k',
         A figure with the output if `ax` is not set, else None.
     """
     if not _p.mpl_available:
-        raise RuntimeError("matplotlib was not found, but is required "
-                           "for current()")
+        raise RuntimeError("matplotlib was not found, but is required " "for current()")
 
     # Matplotlib's "density" is in units of 30 streamlines...
     density *= 1 / 30 * ta.array(field.shape[:2], int)
@@ -2006,12 +2214,13 @@ def streamplot(field, box, cmap=None, bgcolor=None, linecolor='k',
         cmap = _p.matplotlib.cm.get_cmap(cmap)
         bgcolor = cmap(0)[:3]
     elif cmap is not None:
-        raise ValueError("The parameters 'cmap' and 'bgcolor' are "
-                         "mutually exclusive.")
+        raise ValueError(
+            "The parameters 'cmap' and 'bgcolor' are " "mutually exclusive."
+        )
 
     if ax is None:
         fig = _make_figure(dpi, fig_size, use_pyplot=(file is None))
-        ax = fig.add_subplot(1, 1, 1, aspect='equal')
+        ax = fig.add_subplot(1, 1, 1, aspect="equal")
     else:
         fig = None
 
@@ -2025,23 +2234,36 @@ def streamplot(field, box, cmap=None, bgcolor=None, linecolor='k',
     if cmap is None:
         ax.set_axis_bgcolor(bgcolor)
     else:
-        image = ax.imshow(speed, cmap=cmap,
-                          interpolation='bicubic',
-                          extent=[e for c in box for e in c],
-                          origin='lower', vmin=0, vmax=vmax)
+        image = ax.imshow(
+            speed,
+            cmap=cmap,
+            interpolation="bicubic",
+            extent=[e for c in box for e in c],
+            origin="lower",
+            vmin=0,
+            vmax=vmax,
+        )
 
     linewidth = max_linewidth / vmax * speed
     color = linewidth / min_linewidth
     thin = linewidth < min_linewidth
     linewidth[thin] = min_linewidth
-    color[~ thin] = 1
+    color[~thin] = 1
 
     line_cmap = _linear_cmap(linecolor, bgcolor)
 
-    ax.streamplot(X, Y, field[:,:,0], field[:,:,1],
-                  density=density, linewidth=linewidth,
-                  color=color, cmap=line_cmap, arrowstyle='->',
-                  norm=_p.matplotlib.colors.Normalize(0, 1))
+    ax.streamplot(
+        X,
+        Y,
+        field[:, :, 0],
+        field[:, :, 1],
+        density=density,
+        linewidth=linewidth,
+        color=color,
+        cmap=line_cmap,
+        arrowstyle="->",
+        norm=_p.matplotlib.colors.Normalize(0, 1),
+    )
 
     ax.set_xlim(*box[0])
     ax.set_ylim(*box[1])
@@ -2054,10 +2276,20 @@ def streamplot(field, box, cmap=None, bgcolor=None, linecolor='k',
     return fig
 
 
-def scalarplot(field, box,
-               cmap=None, colorbar=True, file=None, show=True,
-               dpi=None, fig_size=None, ax=None, vmin=None, vmax=None,
-               background='#e0e0e0'):
+def scalarplot(
+    field,
+    box,
+    cmap=None,
+    colorbar=True,
+    file=None,
+    show=True,
+    dpi=None,
+    fig_size=None,
+    ax=None,
+    vmin=None,
+    vmax=None,
+    background="#e0e0e0",
+):
     """Draw a scalar field in Kwant style
 
     Internally, this routine uses matplotlib's imshow.
@@ -2100,8 +2332,7 @@ def scalarplot(field, box,
         A figure with the output if ``ax`` is not set, else None.
     """
     if not _p.mpl_available:
-        raise RuntimeError("matplotlib was not found, but is required "
-                           "for current()")
+        raise RuntimeError("matplotlib was not found, but is required " "for current()")
 
     # Matplotlib plots images like matrices: image[y, x].  We use the opposite
     # convention: image[x, y].  Hence, it is necessary to transpose.
@@ -2117,7 +2348,7 @@ def scalarplot(field, box,
 
     if ax is None:
         fig = _make_figure(dpi, fig_size, use_pyplot=(file is None))
-        ax = fig.add_subplot(1, 1, 1, aspect='equal')
+        ax = fig.add_subplot(1, 1, 1, aspect="equal")
     else:
         fig = None
 
@@ -2126,10 +2357,15 @@ def scalarplot(field, box,
     if vmax is None:
         vmax = np.max(field)
 
-    image = ax.imshow(field, cmap=cmap,
-                      interpolation='bicubic',
-                      extent=[e for c in box for e in c],
-                      origin='lower', vmin=vmin, vmax=vmax)
+    image = ax.imshow(
+        field,
+        cmap=cmap,
+        interpolation="bicubic",
+        extent=[e for c in box for e in c],
+        origin="lower",
+        vmin=vmin,
+        vmax=vmax,
+    )
 
     ax.set_xlim(*box[0])
     ax.set_ylim(*box[1])
@@ -2187,16 +2423,17 @@ def current(syst, current, relwidth=0.05, **kwargs):
     kwant.plotter.density
     """
     with _common.reraise_warnings(4):
-        return streamplot(*interpolate_current(syst, current, relwidth),
-                          **kwargs)
+        return streamplot(*interpolate_current(syst, current, relwidth), **kwargs)
 
 
 def _mask(field, box, coords, cutoff):
     tree = spatial.cKDTree(coords)
 
     # Build the mask initially as a 2D array
-    dims = tuple(slice(boxmin, boxmax, 1j * shape)
-                 for (boxmin, boxmax), shape in zip(box, field.shape))
+    dims = tuple(
+        slice(boxmin, boxmax, 1j * shape)
+        for (boxmin, boxmax), shape in zip(box, field.shape)
+    )
     mask = np.mgrid[dims].reshape(len(box), -1).T
 
     mask = tree.query(mask, distance_upper_bound=cutoff)[0] == np.inf
@@ -2251,8 +2488,7 @@ def density(syst, density, relwidth=0.05, **kwargs):
     kwant.plotter.map
     """
     with _common.reraise_warnings(4):
-        return scalarplot(*interpolate_density(syst, density, relwidth),
-                          **kwargs)
+        return scalarplot(*interpolate_density(syst, density, relwidth), **kwargs)
 
 
 # TODO (Anton): Fix plotting of parts of the system using color = np.nan.
