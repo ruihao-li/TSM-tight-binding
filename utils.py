@@ -1,8 +1,13 @@
 from types import SimpleNamespace
 import numpy as np
 import ipywidgets
+import sys
 import matplotlib.pyplot as plt
+import itertools
+import functools
+import warnings
 import kwant
+from kwant import system, _common
 
 
 __all__ = ["pauli", "interact", "make_slab", "plot_spectrum", "plot_wfs", "WSM_BC"]
@@ -31,6 +36,229 @@ pauli.szsx = np.kron(pauli.sz, pauli.sx)
 pauli.szsy = np.kron(pauli.sz, pauli.sy)
 pauli.szsz = np.kron(pauli.sz, pauli.sz)
 
+#------------------------------------------------------------
+### Modified Kwant's spectrum function
+#------------------------------------------------------------
+
+_p = _common.lazy_import("_plotter")
+
+def spectrum(
+    syst,
+    x,
+    y=None,
+    params=None,
+    mask=None,
+    file=None,
+    show=True,
+    dpi=None,
+    fig_size=None,
+    ax=None,
+    num_bands=None,
+):
+    """Plot the spectrum of a Hamiltonian as a function of 1 or 2 parameters
+
+    Parameters
+    ----------
+    syst : `kwant.system.FiniteSystem` or callable
+        If a function, then it must take named parameters and return the
+        Hamiltonian as a dense matrix.
+    x : pair ``(name, values)``
+        Parameter to ``ham`` that will be varied. Consists of the
+        parameter name, and a sequence of parameter values.
+    y : pair ``(name, values)``, optional
+        Used for 3D plots (same as ``x``). If provided, then the cartesian
+        product of the ``x`` values and these values will be used as a grid
+        over which to evaluate the spectrum.
+    params : dict, optional
+        The rest of the parameters to ``ham``, which will be kept constant.
+    mask : callable, optional
+        Takes the parameters specified by ``x`` and ``y`` and returns True
+        if the spectrum should not be calculated for the given parameter
+        values.
+    file : string or file object or `None`
+        The output file.  If `None`, output will be shown instead.
+    show : bool
+        Whether ``matplotlib.pyplot.show()`` is to be called, and the output is
+        to be shown immediately.  Defaults to `True`.
+    dpi : float
+        Number of pixels per inch.  If not set the ``matplotlib`` default is
+        used.
+    fig_size : tuple
+        Figure size `(width, height)` in inches.  If not set, the default
+        ``matplotlib`` value is used.
+    ax : ``matplotlib.axes.Axes`` instance or `None`
+        If `ax` is not `None`, no new figure is created, but the plot is done
+        within the existing Axes `ax`. in this case, `file`, `show`, `dpi`
+        and `fig_size` are ignored.
+    num_bands : int
+        Number of bands that should be plotted, only works for 2D plots. If
+        None all bands are plotted.
+
+    Returns
+    -------
+    fig : matplotlib figure
+        A figure with the output if `ax` is not set, else None.
+    """
+
+    if not _p.mpl_available:
+        raise RuntimeError(
+            "matplotlib was not found, but is required " "for plot_spectrum()"
+        )
+    if y is not None and not _p.has3d:
+        raise RuntimeError("Installed matplotlib does not support 3d plotting")
+
+    if isinstance(syst, system.FiniteSystem):
+
+        def ham(**kwargs):
+            return syst.hamiltonian_submatrix(params=kwargs, sparse=False)
+
+    elif callable(syst):
+        ham = syst
+    else:
+        raise TypeError("Expected 'syst' to be a finite Kwant system " "or a function.")
+
+    params = params or dict()
+    keys = (x[0],) if y is None else (x[0], y[0])
+    array_values = (x[1],) if y is None else (x[1], y[1])
+
+    # calculate spectrum on the grid of points
+    spectrum = []
+    bound_ham = functools.partial(ham, **params)
+    for point in itertools.product(*array_values):
+        p = dict(zip(keys, point))
+        if mask and mask(**p):
+            spectrum.append(None)
+        else:
+            h_p = np.atleast_2d(bound_ham(**p))
+            spectrum.append(np.linalg.eigvalsh(h_p))
+    # massage masked grid points into a list of NaNs of the appropriate length
+    n_eigvals = len(next(filter(lambda s: s is not None, spectrum)))
+    nan_list = [np.nan] * n_eigvals
+    spectrum = [nan_list if s is None else s for s in spectrum]
+    # make into a numpy array and reshape
+    new_shape = [len(v) for v in array_values] + [-1]
+    spectrum = np.array(spectrum).reshape(new_shape)
+
+    # set up axes
+    if ax is None:
+        fig = _make_figure(dpi, fig_size, use_pyplot=(file is None))
+        if y is None:
+            ax = fig.add_subplot(1, 1, 1)
+        else:
+            warnings.filterwarnings("ignore", message=r".*mouse rotation disabled.*")
+            ax = fig.add_subplot(1, 1, 1, projection="3d")
+            warnings.resetwarnings()
+        ax.set_xlabel(keys[0])
+        if y is None:
+            ax.set_ylabel("Energy")
+        else:
+            ax.set_ylabel(keys[1])
+            ax.set_zlabel("Energy")
+        ax.set_title(
+            ", ".join(
+                "{} = {}".format(key, value)
+                for key, value in params.items()
+                if not callable(value)
+            )
+        )
+    else:
+        fig = None
+
+    # actually do the plot
+    if y is None:
+        ax.plot(array_values[0], spectrum)
+    else:
+        if not hasattr(ax, "plot_surface"):
+            msg = (
+                "When providing an axis for plotting over a 2D domain the "
+                'axis should be created with \'projection="3d"'
+            )
+            raise TypeError(msg)
+        # plot_surface cannot directly handle rank-3 values, so we
+        # explicitly loop over the last axis
+        grid = np.meshgrid(*array_values)
+
+        # modified: added num_bands functionality
+        if num_bands is None:
+            for i in range(spectrum.shape[-1]):
+                spec = spectrum[:, :, i].transpose()  # row-major to x-y ordering
+                ax.plot_surface(*(grid + [spec]), cstride=1, rstride=1)
+        else:
+            mid = spectrum.shape[-1] // 2
+            num_bands //= 2
+            for i in range(mid - num_bands, mid + num_bands):
+                spec = spectrum[:, :, i].transpose()  # row-major to x-y ordering
+                ax.plot_surface(*(grid + [spec]), cstride=1, rstride=1)
+
+    _maybe_output_fig(fig, file=file, show=show)
+
+    return fig
+
+def _make_figure(dpi, fig_size, use_pyplot=False):
+    if "matplotlib.backends" not in sys.modules:
+        warnings.warn(
+            "Kwant's plotting functions have\nthe side effect of "
+            "selecting the matplotlib backend. To avoid this "
+            "warning,\nimport matplotlib.pyplot, "
+            "matplotlib.backends or call matplotlib.use().",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+    if use_pyplot:
+        # We import backends and pyplot only at the last possible moment (=now)
+        # because this has the side effect of selecting the matplotlib backend
+        # for good.  Warn if backend has not been set yet.  This check is the
+        # same as the one performed inside matplotlib.use.
+        from matplotlib import pyplot
+
+        fig = pyplot.figure()
+    else:
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+        fig = _p.Figure()
+        fig.canvas = FigureCanvasAgg(fig)
+    if dpi is not None:
+        fig.set_dpi(dpi)
+    if fig_size is not None:
+        fig.set_figwidth(fig_size[0])
+        fig.set_figheight(fig_size[1])
+    return fig
+
+def _maybe_output_fig(fig, file=None, show=True):
+    """Output a matplotlib figure using a given output mode.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure instance
+        The figure to be output.
+    file : string or a file object
+        The name of the target file or the target file itself
+        (opened for writing).
+    show : bool
+        Whether to call ``matplotlib.pyplot.show()``.  Only has an effect if
+        not saving to a file.
+
+    Notes
+    -----
+    The behavior of this function producing a file is different from that of
+    matplotlib in that the `dpi` attribute of the figure is used by defaul
+    instead of the matplotlib config setting.
+    """
+    if fig is None:
+        return
+
+    if file is not None:
+        fig.canvas.print_figure(file, dpi=fig.dpi)
+    elif show:
+        # If there was no file provided, pyplot should already be available and
+        # we can import it safely without additional warnings.
+        from matplotlib import pyplot
+
+        pyplot.show()
+
+#------------------------------------------------------------
+### Custom functions
+#------------------------------------------------------------
 
 def interact(func, params, step_size=0.05):
     """
@@ -45,7 +273,6 @@ def interact(func, params, step_size=0.05):
         for key, value in params.items()
     }
     return ipywidgets.interactive(func, **params_spec)
-
 
 def make_slab(syst, ts_dir, L):
     """
@@ -75,9 +302,8 @@ def make_slab(syst, ts_dir, L):
     )
     return template
 
-
 def plot_spectrum(
-    syst, params, kx=None, ky=None, kz=None, ts_dir=None, L=None, num_bands=None
+    syst, params, kx=None, ky=None, kz=None, ts_dir=None, L=None, num_bands=None, fig_size=(6,4)
 ):
     """
     Plot the energy spectrum of a 3D finite/infinite system (with translational symmetry in two directions).
@@ -103,11 +329,11 @@ def plot_spectrum(
                 fixed_list.append(item)
             else:
                 var_list.append(item)
-        kwant.plotter.spectrum(
+        spectrum(
             final_syst,
             *var_list,
             params={**dict(fixed_list), **params},
-            fig_size=(8, 6)
+            fig_size=fig_size
         )
 
     else:
@@ -124,23 +350,22 @@ def plot_spectrum(
             else:
                 var_list.append(item)
         if len(var_list) == 1:
-            kwant.plotter.spectrum(
+            spectrum(
                 final_syst,
                 *var_list,
                 params={**dict(fixed_list), **params},
-                fig_size=(8, 6)
+                fig_size=fig_size
             )
         elif len(var_list) == 2:
-            kwant.plotter.spectrum(
+            spectrum(
                 final_syst,
                 *var_list,
                 params={**dict(fixed_list), **params},
-                fig_size=(8, 6),
+                fig_size=fig_size,
                 num_bands=num_bands
             )
 
-
-def plot_wfs(syst, params, L, kx=None, ky=None, kz=None):
+def plot_wfs(syst, params, L, kx=None, ky=None, kz=None, fig_size=(6,4)):
     """
     Plot wavefunction density (corresponding to the two lowest eigenstates) on each site of a finite slab.
 
@@ -174,14 +399,13 @@ def plot_wfs(syst, params, L, kx=None, ky=None, kz=None):
     # Sort according to the absolute values of energy
     evecs = evecs[:, np.argsort(np.abs(evals))]
 
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=fig_size)
     # One band with positive energy and one band with negative energy due to particle-hole symmetry
     plt.plot(density(evecs[:, 0]) + density(evecs[:, 1]), label="ev0")
     plt.plot(density(evecs[:, 2]) + density(evecs[:, 3]), label="ev1")
     plt.xlabel("Layer index")
     plt.ylabel("Wavefunction density")
     plt.legend()
-
 
 def WSM_BC(syst, params, ts_dir, L, band_indices, ks):
     """
