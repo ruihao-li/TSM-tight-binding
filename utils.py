@@ -407,6 +407,40 @@ def plot_wfs(syst, params, L, kx=None, ky=None, kz=None, fig_size=(6,4)):
     plt.ylabel("Wavefunction density")
     plt.legend()
 
+def _compute_bc(wf_grid, ks):
+    """
+    Compute the Berry curvature over a square grid of wavefunctions with the Fukui-Hatsugai-Suzuki method.
+
+    Args:
+        - wf_grid: 2D array -- Wavefunctions on a ks x ks grid.
+        - ks: 1D array -- Values of momentum grid to be used for Berry curvature calculation.
+
+    Returns:
+        - bc: 2D array -- Berry curvature on each square in a ks x ks grid.
+    """
+    F_grid = []
+    for i in range(len(ks) - 1):
+        for j in range(len(ks) - 1):
+            S12 = np.linalg.det(
+                np.reshape(wf_grid[i, j].T.conj() @ wf_grid[i + 1, j], (1, 1))
+            )
+            S23 = np.linalg.det(
+                np.reshape(
+                    wf_grid[i + 1, j].T.conj() @ wf_grid[i + 1, j + 1], (1, 1)
+                )
+            )
+            S34 = np.linalg.det(
+                np.reshape(
+                    wf_grid[i + 1, j + 1].T.conj() @ wf_grid[i, j + 1], (1, 1)
+                )
+            )
+            S41 = np.linalg.det(
+                np.reshape(wf_grid[i, j + 1].T.conj() @ wf_grid[i, j], (1, 1))
+            )
+            F_grid.append(-np.imag(np.log(S12 * S23 * S34 * S41)))
+
+    return F_grid
+
 def WSM_BC(syst, params, ts_dir, L, band_indices, ks):
     """
     Compute the Berry curvature of a particular layer (in the y-direction) in a WSM slab using the Fukui-Hatsugai-Suzuki method.
@@ -453,28 +487,7 @@ def WSM_BC(syst, params, ts_dir, L, band_indices, ks):
         wf_grid = np.array(
             [[target_band(ki, kj, ts_dir, band_idx) for ki in ks] for kj in ks]
         )
-
-        F_grid = []
-        for i in range(len(ks) - 1):
-            for j in range(len(ks) - 1):
-                S12 = np.linalg.det(
-                    np.reshape(wf_grid[i, j].T.conj() @ wf_grid[i + 1, j], (1, 1))
-                )
-                S23 = np.linalg.det(
-                    np.reshape(
-                        wf_grid[i + 1, j].T.conj() @ wf_grid[i + 1, j + 1], (1, 1)
-                    )
-                )
-                S34 = np.linalg.det(
-                    np.reshape(
-                        wf_grid[i + 1, j + 1].T.conj() @ wf_grid[i, j + 1], (1, 1)
-                    )
-                )
-                S41 = np.linalg.det(
-                    np.reshape(wf_grid[i, j + 1].T.conj() @ wf_grid[i, j], (1, 1))
-                )
-                F_grid.append(-np.imag(np.log(S12 * S23 * S34 * S41)))
-
+        F_grid = _compute_bc(wf_grid, ks)
         bc += np.array(F_grid)
 
     bc = bc.reshape(len(ks) - 1, -1)
